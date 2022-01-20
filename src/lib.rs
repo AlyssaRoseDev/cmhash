@@ -1,5 +1,12 @@
-#![cfg_attr(not(any(test, loom)), no_std)]
+#![cfg_attr(not(std), no_std)]
+#![deny(missing_docs)]
 #![feature(bigint_helper_methods)]
+
+//! # cmhash - Core Mersenne Hashing
+//! 
+//! cmhash uses widening multiply and xor to provide fast hashes of machine words
+//! 
+//! Note: This is not a cryptographically secure hashing algorithm and is primarily meant for use in sharding and hash tables 
 
 #[cfg(loom)]
 use loom::sync::atomic::AtomicUsize;
@@ -22,18 +29,56 @@ const MERSENNE_PRIME: usize = (2 << 31) - 1;
 #[cfg(target_pointer_width = "16")]
 const MERSENNE_PRIME: usize = (2 << 13) - 1;
 
+/// A Thread-Local Core Hasher that uses Cell to minimize the cost of shared mutable state
+
 #[derive(Debug)]
 pub struct TLCoreHasher(Cell<usize>);
 
 impl TLCoreHasher {
+
+    /// Creates a new [`TLCoreHasher`] with a default state of 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use cmhash::TLCoreHasher;
+    ///
+    /// assert_eq!(TLCoreHasher::new().get_state(), 0);
+    /// ```
     pub fn new() -> Self {
         Self(Cell::new(0))
     }
 
+    /// Creates a new [`TLCoreHasher`] with a specific state.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use cmhash::TLCoreHasher;
+    ///
+    /// let state = 0xA5A5A5A5;
+    /// 
+    /// assert_eq!(TLCoreHasher::with_state(state).get_state(), state);
+    /// ```
     pub fn with_state(state: usize) -> Self {
         Self(Cell::new(state))
     }
 
+    /// Retrieve the current state.
+    pub fn get_state(&self) -> usize {
+        self.0.get()
+    }
+
+    /// Quickly hash a word sized value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use cmhash::TLCoreHasher;
+    ///
+    /// let tlcore_hasher = TLCoreHasher::new();
+    /// assert_eq!(tlcore_hasher.fast_hash(0), 0);
+    /// ```
     pub fn fast_hash(&self, val: usize) -> usize {
         let state = self.0.get();
         let input = val ^ state;
@@ -49,19 +94,56 @@ impl Default for TLCoreHasher {
     }
 }
 
+///A CoreHasher with support for concurrent access
+
 #[derive(Debug)]
 pub struct CoreHasher(AtomicUsize);
 
 impl CoreHasher {
 
+    /// Creates a new [`CoreHasher`] with a default state of 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use cmhash::CoreHasher;
+    ///
+    /// assert_eq!(CoreHasher::new().get_state(), 0);
+    /// ```
     pub fn new() -> Self {
         Self(AtomicUsize::new(0))
     }
 
+    /// Creates a new [`CoreHasher`] with a specific state.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use cmhash::CoreHasher;
+    ///
+    /// let state = 0xA5A5A5A5;
+    /// 
+    /// assert_eq!(CoreHasher::with_state(state).get_state(), state);
+    /// ```
     pub fn with_state(state: usize) -> Self{
         Self(AtomicUsize::new(state))
     }
 
+    /// Retrieve the current state.
+    pub fn get_state(&self) -> usize {
+        self.0.load(Ordering::Acquire)
+    }
+
+    /// Quickly hash a word sized value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use cmhash::CoreHasher;
+    ///
+    /// let core_hasher = CoreHasher::new();
+    /// assert_eq!(core_hasher.fast_hash(0), 0);
+    /// ```
     pub fn fast_hash(&self, val: usize) -> usize {
         let state = self.0.load(Ordering::Acquire);
         let input = val ^ state;
@@ -77,6 +159,16 @@ impl Default for CoreHasher {
     }
 }
 
+/// Quickly hash a word sized value without carrying state.
+/// Achieves this by calling [`usize::widening_mul`] and xoring the two halves together
+///
+/// # Examples
+///
+/// ```
+/// use cmhash::stateless_fast_hash;
+///
+/// assert_eq!(stateless_fast_hash(0), 0);
+/// ```
 #[inline]
 pub fn stateless_fast_hash(val: usize) -> usize {
     let (hash, state) = val.widening_mul(MERSENNE_PRIME);
