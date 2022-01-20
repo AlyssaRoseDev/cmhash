@@ -20,6 +20,8 @@ use core::cell::Cell;
 #[cfg(test)]
 mod test;
 
+// The largest Mersenne Prime that can fit in one word of the target 
+
 #[cfg(target_pointer_width = "64")]
 const MERSENNE_PRIME: usize = (2 << 61) - 1;
 
