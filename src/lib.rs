@@ -1,12 +1,12 @@
-#![cfg_attr(not(std), no_std)]
+#![cfg_attr(not(any(std, test)), no_std)]
 #![deny(missing_docs)]
-#![feature(bigint_helper_methods)]
+#![feature(bigint_helper_methods, array_chunks)]
 
 //! # cmhash - Core Mersenne Hashing
-//! 
+//!
 //! cmhash uses widening multiply and xor to provide fast hashes of machine words
-//! 
-//! Note: This is not a cryptographically secure hashing algorithm and is primarily meant for use in sharding and hash tables 
+//!
+//! Note: This is not a cryptographically secure hashing algorithm and is primarily meant for use in sharding and hash tables
 
 #[cfg(loom)]
 use loom::sync::atomic::AtomicUsize;
@@ -14,13 +14,13 @@ use loom::sync::atomic::AtomicUsize;
 #[cfg(not(loom))]
 use core::sync::atomic::AtomicUsize;
 
-use core::sync::atomic::Ordering;
 use core::cell::Cell;
+use core::sync::atomic::Ordering;
 
 #[cfg(test)]
 mod test;
 
-// The largest Mersenne Prime that can fit in one word of the target 
+// The largest Mersenne Prime that can fit in one word of the target
 
 #[cfg(target_pointer_width = "64")]
 const MERSENNE_PRIME: usize = (2 << 61) - 1;
@@ -37,7 +37,6 @@ const MERSENNE_PRIME: usize = (2 << 13) - 1;
 pub struct TLCoreHasher(Cell<usize>);
 
 impl TLCoreHasher {
-
     /// Creates a new [`TLCoreHasher`] with a default state of 0.
     ///
     /// # Examples
@@ -59,7 +58,7 @@ impl TLCoreHasher {
     /// use cmhash::TLCoreHasher;
     ///
     /// let state = 0xA5A5A5A5;
-    /// 
+    ///
     /// assert_eq!(TLCoreHasher::with_state(state).get_state(), state);
     /// ```
     pub fn with_state(state: usize) -> Self {
@@ -102,7 +101,6 @@ impl Default for TLCoreHasher {
 pub struct CoreHasher(AtomicUsize);
 
 impl CoreHasher {
-
     /// Creates a new [`CoreHasher`] with a default state of 0.
     ///
     /// # Examples
@@ -124,10 +122,10 @@ impl CoreHasher {
     /// use cmhash::CoreHasher;
     ///
     /// let state = 0xA5A5A5A5;
-    /// 
+    ///
     /// assert_eq!(CoreHasher::with_state(state).get_state(), state);
     /// ```
-    pub fn with_state(state: usize) -> Self{
+    pub fn with_state(state: usize) -> Self {
         Self(AtomicUsize::new(state))
     }
 
@@ -175,4 +173,67 @@ impl Default for CoreHasher {
 pub fn stateless_fast_hash(val: usize) -> usize {
     let (hash, state) = val.widening_mul(MERSENNE_PRIME);
     hash ^ state
+}
+
+#[cfg(hasher)]
+/// Implementations of [`Hasher`] and [`BuildHasher`] using fast Mersenne hashing
+pub mod hasher {
+    extern crate alloc;
+    use alloc::vec::Vec;
+    use core::cell::Cell;
+    use core::hash::{Hasher, BuildHasher};
+
+    ///An implementation of Fast Mersenne Hashing that is compatible with [`Hasher`]
+    #[derive(Debug, Default)]
+    pub struct CMHasher {
+        state: Cell<u64>,
+        data: Vec<u8>,
+    }
+
+    impl CMHasher {
+        /// Creates a new [`CMHasher`].
+        pub fn new() -> Self {
+            Self {
+                state: Cell::new(0),
+                data: Vec::new(),
+            }
+        }
+
+        fn hash(&self, val: u64) -> u64 {
+            let state = self.state.get();
+            let input = val ^ state;
+            let (hash, state) = input.widening_mul((2 << 61) - 1);
+            self.state.set(state);
+            hash
+        }
+    }
+
+    impl Hasher for CMHasher {
+        fn finish(&self) -> u64 {
+            let chunks = self.data.array_chunks::<8>();
+            let mut rem = [0u8; 8];
+            // TODO: Find a better way to do this?
+            (0..8).for_each(|i| rem[i] = *chunks.remainder().get(i).unwrap_or(&0));
+            let mut prev = u64::from_ne_bytes(rem);
+            for chunk in chunks {
+                prev ^= self.hash(u64::from_ne_bytes(*chunk));
+            }
+            prev
+        }
+
+        fn write(&mut self, bytes: &[u8]) {
+            self.data.extend_from_slice(bytes);
+        }
+    }
+
+    /// A [`BuildHasher`] that yields a [`CMHasher`]
+    pub struct CMBuildHasher {}
+
+    impl BuildHasher for CMBuildHasher {
+        type Hasher = CMHasher;
+
+        fn build_hasher(&self) -> Self::Hasher {
+            CMHasher::new()
+        }
+    }
 }

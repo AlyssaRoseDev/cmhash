@@ -20,20 +20,28 @@ fn stateless() {
     assert_eq!(hashed1, hashed2)
 }
 
-//Mostly to make sure CoreHasher is properly thread-safe, don't know what to assert? 
+#[cfg(hasher)]
+#[test]
+fn hasherimpl() {
+    use core::hash::Hasher;
+    let mut hasher = hasher::CMHasher::new();
+    hasher.write(b"Hello, World!");
+    eprintln!("{}", hasher.finish());
+}
+
+//Mostly to make sure CoreHasher is properly thread-safe, don't know what to assert?
 #[cfg(loom)]
 #[test]
 fn loomtest() {
-    use loom::thread;
     use loom::sync::Arc;
+    use loom::thread;
     loom::model(|| {
-
         let hash1 = Arc::new(CoreHasher::new());
         let hash2 = hash1.clone();
 
         let t1 = thread::spawn(move || {
             let val: usize = 0xDEADBEEF;
-            for _ in 0..3{
+            for _ in 0..3 {
                 hash1.fast_hash(val);
             }
         });
