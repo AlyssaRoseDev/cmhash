@@ -23,3 +23,7 @@ harness = false
 [[bench]]
 name = "stateless"
 harness = false
+
+[[bench]]
+name = "threaded"
+harness = false
