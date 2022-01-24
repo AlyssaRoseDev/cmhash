@@ -4,7 +4,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 #[allow(dead_code)]
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("stateful_hash_single_thread", |b| {
-        b.iter(|| (black_box(TLCoreHasher::new().fast_hash(0xDEADBEEF))))
+        let h = TLCoreHasher::new();
+        b.iter(|| (black_box(h.fast_hash(0xDEADBEEF))))
     });
 }
 
