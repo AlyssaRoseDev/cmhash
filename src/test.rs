@@ -26,7 +26,19 @@ fn hasherimpl() {
     use core::hash::Hasher;
     let mut hasher = hasher::CMHasher::new();
     hasher.write(b"Hello, World!");
-    eprintln!("{}", hasher.finish());
+    hasher.finish();
+}
+
+#[cfg(hasher)]
+#[test]
+fn statelesshasher() {
+    use core::hash::Hasher;
+    let mut h = hasher::StatelessHasher::new();
+    h.write(b"Hello, World!");
+    let hash1 = h.finish();
+    h.write(b"Hello, World!");
+    let hash2 = h.finish();
+    assert_eq!(hash1, hash2);
 }
 
 //Mostly to make sure CoreHasher is properly thread-safe, don't know what to assert?

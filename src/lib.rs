@@ -1,5 +1,5 @@
-#![cfg_attr(not(any(std, test)), no_std)]
-#![deny(missing_docs)]
+#![cfg_attr(not(test), no_std)]
+#![deny(missing_docs, missing_debug_implementations)]
 #![feature(bigint_helper_methods, array_chunks)]
 
 //! # cmhash - Core Mersenne Hashing
@@ -178,8 +178,6 @@ pub fn stateless_fast_hash(val: usize) -> usize {
 #[cfg(hasher)]
 /// Implementations of [`Hasher`] and [`BuildHasher`] using fast Mersenne hashing
 pub mod hasher {
-    extern crate alloc;
-    use alloc::vec::Vec;
     use core::cell::Cell;
     use core::hash::{Hasher, BuildHasher};
 
@@ -187,7 +185,7 @@ pub mod hasher {
     #[derive(Debug, Default)]
     pub struct CMHasher {
         state: Cell<u64>,
-        data: Vec<u8>,
+        data: Cell<u64>
     }
 
     impl CMHasher {
@@ -195,7 +193,7 @@ pub mod hasher {
         pub fn new() -> Self {
             Self {
                 state: Cell::new(0),
-                data: Vec::new(),
+                data: Cell::new(0),
             }
         }
 
@@ -210,23 +208,25 @@ pub mod hasher {
 
     impl Hasher for CMHasher {
         fn finish(&self) -> u64 {
-            let chunks = self.data.array_chunks::<8>();
-            let mut rem = [0u8; 8];
-            // TODO: Find a better way to do this?
-            (0..8).for_each(|i| rem[i] = *chunks.remainder().get(i).unwrap_or(&0));
-            let mut prev = u64::from_ne_bytes(rem);
-            for chunk in chunks {
-                prev ^= self.hash(u64::from_ne_bytes(*chunk));
-            }
-            prev
+            self.data.replace(0)
         }
 
         fn write(&mut self, bytes: &[u8]) {
-            self.data.extend_from_slice(bytes);
+            let chunks = bytes.array_chunks::<8>();
+            let rem = {
+                let mut r = chunks.remainder().iter();
+                [0u8; 8].map(|_| *r.next().unwrap_or(&0))
+            };
+            let mut prev = 0;
+            for chunk in chunks {
+                prev ^= self.hash(u64::from_ne_bytes(*chunk));
+            }
+            self.data.set(self.hash(u64::from_ne_bytes(rem)) ^ prev);
         }
     }
 
     /// A [`BuildHasher`] that yields a [`CMHasher`]
+    #[derive(Debug)]
     pub struct CMBuildHasher {}
 
     impl BuildHasher for CMBuildHasher {
@@ -234,6 +234,57 @@ pub mod hasher {
 
         fn build_hasher(&self) -> Self::Hasher {
             CMHasher::new()
+        }
+    }
+
+    /// A [`Hasher`] that does not have a persistent internal state for fully deterministic hashing
+    #[derive(Debug, Default)]
+    pub struct StatelessHasher {
+        data: Cell<u64>,
+    }
+
+    impl StatelessHasher {
+        ///Creates a new [`StatelessHasher`]
+        pub fn new() -> Self {
+            Self {
+                data: Cell::new(0)
+            }
+        }
+
+        fn hash(&self, val: u64) -> u64 {
+            let (hash, state) = val.widening_mul((2 << 61) - 1);
+            hash ^ state
+        }
+    }
+
+    impl Hasher for StatelessHasher {
+        fn finish(&self) -> u64 {
+            self.data.replace(0)
+        }
+
+        fn write(&mut self, bytes: &[u8]) {
+            let chunks = bytes.array_chunks::<8>();
+            let rem = {
+                let mut r = chunks.remainder().iter();
+                [0u8; 8].map(|_| *r.next().unwrap_or(&0))
+            };
+            let mut prev = 0;
+            for chunk in chunks {
+                prev ^= self.hash(u64::from_ne_bytes(*chunk));
+            }
+            self.data.set(self.hash(u64::from_ne_bytes(rem)) ^ prev);
+        }
+    }
+
+    /// A [`BuildHasher`] that yields a [`StatelessHasher`]
+    #[derive(Debug)]
+    pub struct StatelessBuildHasher;
+
+    impl BuildHasher for StatelessBuildHasher {
+        type Hasher = StatelessHasher;
+
+        fn build_hasher(&self) -> Self::Hasher {
+            StatelessHasher::new()
         }
     }
 }
