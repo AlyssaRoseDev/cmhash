@@ -11,8 +11,13 @@ pub struct CMHasher {
 impl CMHasher {
     /// Creates a new [`CMHasher`].
     pub fn new() -> Self {
+        Self::with_state(0xAAAA_AAAA_AAAA_AAAA)
+    }
+
+    /// Creates a new [`CMHasher`] with the specified state
+    pub fn with_state(state: u64) -> Self {
         Self {
-            state: Cell::new(crate::DEFAULT_STATE),
+            state: Cell::new(state),
             data: Cell::new(0),
         }
     }
