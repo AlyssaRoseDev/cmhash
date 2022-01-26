@@ -4,11 +4,11 @@ use crate::*;
 fn nopanic() {
     let val: usize = 0xDEADBEEF;
     let h = CoreHasher::new();
-    let hashed1 = h.fast_hash(val);
-    let hashed2 = h.fast_hash(val);
+    let hashed1 = h.hash_word(val);
+    let hashed2 = h.hash_word(val);
     assert_ne!(hashed1, hashed2);
     let h2 = CoreHasher::new();
-    let hashed3 = h2.fast_hash(val);
+    let hashed3 = h2.hash_word(val);
     assert_eq!(hashed1, hashed3);
 }
 
@@ -54,14 +54,14 @@ fn loomtest() {
         let t1 = thread::spawn(move || {
             let val: usize = 0xDEADBEEF;
             for _ in 0..3 {
-                hash1.fast_hash(val);
+                hash1.hash_word(val);
             }
         });
 
         let t2 = thread::spawn(move || {
             let val: usize = 0xDEADBEEF;
             for _ in 0..3 {
-                hash2.fast_hash(val);
+                hash2.hash_word(val);
             }
         });
 

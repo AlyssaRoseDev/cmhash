@@ -5,7 +5,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("stateful_hash_single_thread", |b| {
         let h = TLCoreHasher::new();
-        b.iter(|| (black_box(h.fast_hash(0xDEADBEEF))))
+        b.iter(|| (black_box(h.hash_word(0xDEADBEEF))))
     });
 }
 
