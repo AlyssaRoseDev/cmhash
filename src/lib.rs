@@ -20,7 +20,7 @@ use core::sync::atomic::Ordering;
 #[cfg(test)]
 mod test;
 
-/// Implementations of [`Hasher`] and [`BuildHasher`] using fast Mersenne hashing
+/// Implementations of `Hasher` and `BuildHasher` using fast Mersenne hashing
 pub mod hasher;
 pub use crate::hasher::*;
 
@@ -147,7 +147,8 @@ impl CoreHasher {
         hash
     }
 
-    /// Hashes a slice of bytes by converting to a slice of usize and repeatedly applying [`Self::hash_word`]
+    /// Hashes a slice of bytes by converting to a slice of usize
+    /// and repeatedly applying [`Self::hash_word`]
     pub fn hash_bytes(&self, bytes: &[u8]) -> usize {
         const N: usize = core::mem::size_of::<usize>();
         let chunks = bytes.array_chunks::<N>();
@@ -179,7 +180,7 @@ impl Default for CoreHasher {
 /// assert_eq!(stateless_fast_hash(0), 0);
 /// ```
 #[inline]
-pub fn stateless_fast_hash(val: usize) -> usize {
-    let (hash, state) = val.widening_mul(MERSENNE_PRIME);
+pub fn hash_word_stateless(val: usize) -> usize {
+    let (hash, state) = (val ^ DEFAULT_STATE).widening_mul(MERSENNE_PRIME);
     hash ^ state
 }

@@ -48,7 +48,7 @@ impl Hasher for CMHasher {
             chunks
                 .map(|c| u64::from_ne_bytes(*c))
                 .chain(core::iter::once(rem))
-                .fold(0, |val, next| val ^ self.hash(next)),
+                .fold(self.state.get(), |val, next| val ^ self.hash(next)),
         );
     }
 }
