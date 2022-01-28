@@ -1,6 +1,8 @@
 use core::cell::Cell;
 use core::hash::{BuildHasher, Hasher};
 
+const DEFAULT_HASHER_STATE: u64 = 0xAAAA_AAAA_AAAA_AAAA;
+
 ///An implementation of Fast Mersenne Hashing that is compatible with [`Hasher`]
 #[derive(Debug, Default)]
 pub struct CMHasher {
@@ -11,7 +13,7 @@ pub struct CMHasher {
 impl CMHasher {
     /// Creates a new [`CMHasher`].
     pub fn new() -> Self {
-        Self::with_state(0xAAAA_AAAA_AAAA_AAAA)
+        Self::with_state(DEFAULT_HASHER_STATE)
     }
 
     /// Creates a new [`CMHasher`] with the specified state
@@ -53,13 +55,33 @@ impl Hasher for CMHasher {
 
 /// A [`BuildHasher`] that yields a [`CMHasher`]
 #[derive(Debug)]
-pub struct CMBuildHasher {}
+pub struct CMBuildHasher {
+    state: u64
+}
+
+impl CMBuildHasher {
+    /// Returns a [`CMBuildHasher`] with the default state
+    pub fn new() -> Self {
+        Self::with_state(DEFAULT_HASHER_STATE)
+    }
+
+    /// Returns a [`CMBuildHasher`] with the provided state
+    pub fn with_state(state: u64) -> Self{
+        Self { state }
+    }
+}
 
 impl BuildHasher for CMBuildHasher {
     type Hasher = CMHasher;
 
     fn build_hasher(&self) -> Self::Hasher {
-        CMHasher::new()
+        CMHasher::with_state(self.state)
+    }
+}
+
+impl Default for CMBuildHasher {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

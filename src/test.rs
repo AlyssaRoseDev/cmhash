@@ -20,7 +20,6 @@ fn stateless() {
     assert_eq!(hashed1, hashed2)
 }
 
-#[cfg(hasher)]
 #[test]
 fn hasherimpl() {
     use core::hash::Hasher;
@@ -29,15 +28,13 @@ fn hasherimpl() {
     hasher.finish();
 }
 
-#[cfg(hasher)]
 #[test]
 fn statelesshasher() {
-    use core::hash::Hasher;
+    use core::hash::Hash;
     let mut h = hasher::StatelessHasher::new();
-    h.write(b"Hello, World!");
-    let hash1 = h.finish();
-    h.write(b"Hello, World!");
-    let hash2 = h.finish();
+    let s = b"Hello, World";
+    let hash1 = s.hash(&mut h);
+    let hash2 = s.hash(&mut h);
     assert_eq!(hash1, hash2);
 }
 

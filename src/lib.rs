@@ -21,9 +21,7 @@ use core::sync::atomic::Ordering;
 mod test;
 
 /// Implementations of [`Hasher`] and [`BuildHasher`] using fast Mersenne hashing
-#[cfg(hasher)]
 pub mod hasher;
-#[cfg(hasher)]
 pub use crate::hasher::*;
 
 // The largest Mersenne Prime that can fit in one word of the target
