@@ -51,12 +51,16 @@ impl Hasher for CMHasher {
                 .fold(self.state.get(), |val, next| val ^ self.hash(next)),
         );
     }
+
+    fn write_u64(&mut self, i: u64) {
+        self.data.set(self.hash(i));
+    }
 }
 
 /// A [`BuildHasher`] that yields a [`CMHasher`]
 #[derive(Debug)]
 pub struct CMBuildHasher {
-    state: u64
+    state: u64,
 }
 
 impl CMBuildHasher {
@@ -66,7 +70,7 @@ impl CMBuildHasher {
     }
 
     /// Returns a [`CMBuildHasher`] with the provided state
-    pub fn with_state(state: u64) -> Self{
+    pub fn with_state(state: u64) -> Self {
         Self { state }
     }
 }
@@ -120,6 +124,10 @@ impl Hasher for StatelessHasher {
                 .chain(core::iter::once(rem))
                 .fold(0, |val, next| val ^ self.hash(next)),
         );
+    }
+
+    fn write_u64(&mut self, i: u64) {
+        self.data.set(self.hash(i));
     }
 }
 

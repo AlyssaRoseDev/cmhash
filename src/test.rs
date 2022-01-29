@@ -12,7 +12,7 @@ fn nopanic() {
     let h2 = CoreHasher::new();
     let hashed3 = h2.hash_word(val);
     // Because we reset the hasher state by constructing a new one, the hashes for this and the
-    // first hash of the previous hasher will be equal 
+    // first hash of the previous hasher will be equal
     assert_eq!(hashed1, hashed3);
 }
 
@@ -50,7 +50,7 @@ fn statelesshasher() {
 
 #[test]
 fn buildhashers() {
-    use core::hash::{Hash, Hasher, BuildHasher};
+    use core::hash::{BuildHasher, Hash, Hasher};
     let builder = crate::hasher::CMBuildHasher::new();
     let val = b"Lorem ipsum dolor sit amet";
     let hash1 = {
@@ -61,7 +61,7 @@ fn buildhashers() {
     let hash2 = {
         let mut h = builder.build_hasher();
         val.hash(&mut h);
-        h.finish()       
+        h.finish()
     };
     assert_eq!(hash1, hash2)
 }

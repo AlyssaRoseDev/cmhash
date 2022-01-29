@@ -17,13 +17,5 @@ criterion = {version = "0.3", features = ["html_reports"]}
 loom = "0.5"
 
 [[bench]]
-name = "stateful"
-harness = false
-
-[[bench]]
-name = "stateless"
-harness = false
-
-[[bench]]
-name = "threaded"
+name = "standalone_hashes"
 harness = false
