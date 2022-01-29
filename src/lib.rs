@@ -38,11 +38,9 @@ const MERSENNE_PRIME: usize = (2 << 13) - 1;
 #[cfg(target_pointer_width = "64")]
 pub(crate) const DEFAULT_STATE: usize = 0xAAAA_AAAA_AAAA_AAAA;
 
-///The default state for the stateful hashers
 #[cfg(target_pointer_width = "32")]
 pub(crate) const DEFAULT_STATE: usize = 0xAAAA_AAAA;
 
-///The default state for the stateful hashers
 #[cfg(target_pointer_width = "16")]
 pub(crate) const DEFAULT_STATE: usize = 0xAAAA;
 
